@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: BSL-1.0
+
+.{
+    .name = .fluxion_jobs,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.16.0",
+    .fingerprint = 0xe5f271c1b181414,
+    .dependencies = .{
+        .fluxion_id = .{
+            .url = "git+https://github.com/kisstp2006/fluxion-id#64a04a156031a5d87ead8ce9d4fdb8c78f21ef30",
+            .hash = "fluxion_id-0.1.0--9Hv-nGFAQAW36SvJvMB6L1nUNErZzh7JC0-nRPlrotw",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "examples",
+        "README.md",
+    },
+}

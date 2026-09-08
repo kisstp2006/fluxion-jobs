@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fluxion Jobs in the browser</title>
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 2rem; color: #222; background: #f6f6f6; }
+  canvas { image-rendering: pixelated; border: 1px solid #999; display: block; margin: 1rem 0; }
+  label { margin-right: 1.5rem; }
+  code { background: #eee; padding: 0 .3em; }
+</style>
+</head>
+<body>
+<h1>Fluxion Jobs, with no threads at all</h1>
+<p>
+  The same scheduler as the native demo, compiled to <code>wasm32-freestanding</code>.
+  There is no <code>Io</code>, so there are no workers: each animation frame calls
+  <code>tick(budget)</code>, runs that many tile jobs, and hands the rest of the
+  frame back to the page. Turn the budget down to watch the tiles arrive.
+</p>
+<p>
+  <label>Jobs per frame <input id="budget" type="range" min="1" max="64" value="4"> <span id="budget-value">4</span></label>
+  <label>Tile <select id="tile"><option>16</option><option selected>32</option><option>64</option></select></label>
+  <button id="restart">Restart</button>
+</p>
+<canvas id="picture" width="512" height="512"></canvas>
+<p id="status">loading…</p>
+
+<script type="module">
+  const width = 512, height = 512;
+  const canvas = document.getElementById("picture");
+  const ctx = canvas.getContext("2d");
+  const status = document.getElementById("status");
+  const budget = document.getElementById("budget");
+  const budgetValue = document.getElementById("budget-value");
+  const tileSelect = document.getElementById("tile");
+
+  const { instance } = await WebAssembly.instantiateStreaming(fetch("fluxion-jobs-web.wasm"), {});
+  const wasm = instance.exports;
+
+  let total = 0, frames = 0, startedAt = 0;
+
+  function restart() {
+    total = wasm.start(width, height, Number(tileSelect.value));
+    frames = 0;
+    startedAt = performance.now();
+  }
+
+  function frame() {
+    const left = wasm.tick(Number(budget.value));
+    frames += 1;
+
+    // Draw straight out of wasm memory: no copy but the one the canvas makes.
+    const bytes = new Uint8ClampedArray(wasm.memory.buffer, wasm.pixelsPtr(), wasm.pixelsLen());
+    ctx.putImageData(new ImageData(bytes, width, height), 0, 0);
+
+    const done = total - left;
+    status.textContent =
+      `${done} of ${total} tile jobs done, ${frames} frames, ` +
+      `${wasm.workers()} workers, ${(performance.now() - startedAt).toFixed(0)} ms` +
+      (left === 0 ? " — finished" : "");
+    requestAnimationFrame(frame);
+  }
+
+  budget.addEventListener("input", () => budgetValue.textContent = budget.value);
+  document.getElementById("restart").addEventListener("click", restart);
+  tileSelect.addEventListener("change", restart);
+
+  restart();
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>
